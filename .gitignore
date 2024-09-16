@@ -1,0 +1,7 @@
+.DS_Store
+.env
+.venv
+.pyc
+.jsonl
+__pycache__
+parkings.jsonl

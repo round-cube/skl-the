@@ -1,0 +1,77 @@
+version: '3.7'
+
+services:
+  rmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+  redis:
+    image: redis:7.4.0
+    ports:
+      - "6379:6379"
+  entrance-notifier:
+    build:
+      context: .
+      dockerfile: build/go/Dockerfile
+      args:
+        - SERVICE_NAME=entrance-notifier
+    environment:
+      - RMQ_URL=amqp://guest:guest@rmq:5672
+      - FIXTURE_PATH=/etc/entrance-notifier/parkings.json
+    volumes:
+      - ./conf/parkings.json:/etc/entrance-notifier/parkings.json:ro
+  exit-notifier:
+    build:
+      context: .
+      dockerfile: build/go/Dockerfile
+      args:
+        - SERVICE_NAME=exit-notifier
+    environment:
+      - RMQ_URL=amqp://guest:guest@rmq:5672
+      - FIXTURE_PATH=/etc/exit-notifier/parkings.json
+    volumes:
+      - ./conf/parkings.json:/etc/exit-notifier/parkings.json:ro
+  parkings-recorder:
+    build:
+      context: .
+      dockerfile: build/go/Dockerfile
+      args:
+        - SERVICE_NAME=parkings-recorder
+    environment:
+      - RMQ_URL=amqp://guest:guest@rmq:5672
+      - REDIS_URL=redis://redis:6379
+      - STORAGE_URL=http://parkings-storage:8000
+    ports:
+      - 2112:2112
+  parkings-storage:
+    build:
+      context: .
+      dockerfile: build/python/Dockerfile
+    environment:
+      - PORT=8000
+      - TOKEN=parking-meter
+      - STORAGE_FILE=/app/parkings.jsonl
+    ports:
+      - "8000:8000"
+    volumes:
+      - type: bind
+        source: ./parkings.jsonl
+        target: /app/parkings.jsonl
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus:/etc/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+  grafana:
+    image: grafana/grafana:11.2.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/provisioning/dashboards:/var/lib/grafana/dashboards

@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "parkings-storage"
+version = "0.1.0"
+description = "Parking storage API"
+authors = ["Gleb Voropaev <info@gvoropaev.com>"]
+readme = "README.md"
+packages = [{include = "parkings_storage"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.114.2"
+uvicorn = "^0.30.6"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.3"
+pytest-asyncio = "^0.24.0"
+ruff = "^0.6.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
