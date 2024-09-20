@@ -233,10 +233,10 @@ func (w *Worker) ProcessEntrance(m amqp091.Delivery) error {
 	log.Debugf("(worker %d) processing entrance: %v", w.Id, entrance)
 	ctx := context.Background()
 	lock, err := w.Locker.Obtain(ctx, "LOCK"+entrance.ParkingId, 2000*time.Millisecond, w.LockOpts)
+	defer lock.Release(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to obtain lock: %s", err)
 	}
-	defer lock.Release(ctx)
 
 	p, err := w.GetParking(entrance.ParkingId)
 	if err != nil {
@@ -298,10 +298,10 @@ func (w *Worker) ProcessExit(m amqp091.Delivery) error {
 	log.Debugf("(worker %d) processing exit: %v", w.Id, exit)
 	ctx := context.Background()
 	lock, err := w.Locker.Obtain(ctx, "LOCK"+exit.ParkingId, 2000*time.Millisecond, w.LockOpts)
+	defer lock.Release(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to obtain lock: %s", err)
 	}
-	defer lock.Release(ctx)
 
 	p, err := w.GetParking(exit.ParkingId)
 	if err != nil {
