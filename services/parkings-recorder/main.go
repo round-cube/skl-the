@@ -212,6 +212,8 @@ func SendParkingToStorage(p *Parking, url, token string) error {
 }
 
 func (w *Worker) ProcessEntrance(m amqp091.Delivery) error {
+	processingStartTs := time.Now()
+	defer func() { ProcessingLatency.Observe(time.Since(processingStartTs).Seconds()) }()
 	entrance := shared.Entrance{}
 	if err := json.Unmarshal(m.Body, &entrance); err != nil {
 		return err
@@ -226,11 +228,11 @@ func (w *Worker) ProcessEntrance(m amqp091.Delivery) error {
 
 	log.Debugf("(worker %d) processing entrance: %v", w.Id, entrance)
 	ctx := context.Background()
-	lock, err := w.Locker.Obtain(ctx, "LOCK"+entrance.ParkingId, 100*time.Millisecond, nil)
+	lock, err := w.Locker.Obtain(ctx, "LOCK"+entrance.ParkingId, 100*time.Millisecond, w.LockOpts)
+	defer lock.Release(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to obtain lock: %s", err)
 	}
-	defer lock.Release(ctx)
 
 	p, err := w.GetParking(entrance.ParkingId)
 	if err != nil {
@@ -276,6 +278,8 @@ func (w *Worker) ProcessEntrance(m amqp091.Delivery) error {
 }
 
 func (w *Worker) ProcessExit(m amqp091.Delivery) error {
+	processingStartTs := time.Now()
+	defer func() { ProcessingLatency.Observe(time.Since(processingStartTs).Seconds()) }()
 	exit := shared.Exit{}
 	if err := json.Unmarshal(m.Body, &exit); err != nil {
 		return err
@@ -286,15 +290,14 @@ func (w *Worker) ProcessExit(m amqp091.Delivery) error {
 		return fmt.Errorf("failed to parse exit message date time: %s", err)
 	}
 	QueueingLatency.Observe(time.Since(ts).Seconds())
-	defer func() { ProcessingLatency.Observe(time.Since(ts).Seconds()) }()
 
 	log.Debugf("(worker %d) processing exit: %v", w.Id, exit)
 	ctx := context.Background()
-	lock, err := w.Locker.Obtain(ctx, "LOCK"+exit.ParkingId, 100*time.Millisecond, nil)
+	lock, err := w.Locker.Obtain(ctx, "LOCK"+exit.ParkingId, 1000*time.Millisecond, w.LockOpts)
+	defer lock.Release(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to obtain lock: %s", err)
 	}
-	defer lock.Release(ctx)
 
 	p, err := w.GetParking(exit.ParkingId)
 	if err != nil {
