@@ -369,10 +369,10 @@ func (w *Worker) ProcessExits(msgs <-chan amqp091.Delivery) {
 }
 
 func startPrometheus(promPort int, promPath string) {
+	log.Infof("prometheus metrics available at http://localhost:%d%s\n", promPort, promPath)
 	http.Handle(promPath, promhttp.Handler())
 	err := http.ListenAndServe(fmt.Sprintf(":%d", promPort), nil)
 	shared.PanicOnError(err, "failed to start prometheus server")
-	log.Infof("prometheus metrics available at http://localhost:%d%s\n", promPort, promPath)
 }
 
 func main() {
