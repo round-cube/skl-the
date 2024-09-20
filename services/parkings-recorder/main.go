@@ -181,6 +181,10 @@ func formatTime(t time.Time) string {
 	return t.Format(time.RFC3339)
 }
 
+func ObserveLatency(metric prometheus.Observer, start time.Time) {
+	metric.Observe(time.Since(start).Seconds())
+}
+
 func SendParkingToStorage(p *Parking, url, token string) error {
 	log.Infof("sending parking to storage: %v", p)
 	body, err := json.Marshal(p)
@@ -197,7 +201,7 @@ func SendParkingToStorage(p *Parking, url, token string) error {
 
 	client := &http.Client{}
 	start := time.Now()
-	defer func() { StorageLatency.Observe(time.Since(start).Seconds()) }()
+	defer ObserveLatency(StorageLatency, start)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -222,7 +226,7 @@ func (w *Worker) ProcessEntrance(m amqp091.Delivery) error {
 		return fmt.Errorf("failed to parse entrance message date time: %s", err)
 	}
 	QueueingLatency.Observe(time.Since(ts).Seconds())
-	defer func() { ProcessingLatency.Observe(time.Since(ts).Seconds()) }()
+	defer ObserveLatency(ProcessingLatency, ts)
 
 	log.Debugf("(worker %d) processing entrance: %v", w.Id, entrance)
 	ctx := context.Background()
@@ -286,7 +290,7 @@ func (w *Worker) ProcessExit(m amqp091.Delivery) error {
 		return fmt.Errorf("failed to parse exit message date time: %s", err)
 	}
 	QueueingLatency.Observe(time.Since(ts).Seconds())
-	defer func() { ProcessingLatency.Observe(time.Since(ts).Seconds()) }()
+	defer ObserveLatency(ProcessingLatency, ts)
 
 	log.Debugf("(worker %d) processing exit: %v", w.Id, exit)
 	ctx := context.Background()
