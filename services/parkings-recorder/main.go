@@ -217,6 +217,7 @@ func SendParkingToStorage(p *Parking, url, token string) error {
 }
 
 func (w *Worker) ProcessEntrance(m amqp091.Delivery) error {
+	startProcessingTs := time.Now()
 	entrance := shared.Entrance{}
 	if err := json.Unmarshal(m.Body, &entrance); err != nil {
 		return err
@@ -227,7 +228,7 @@ func (w *Worker) ProcessEntrance(m amqp091.Delivery) error {
 		return fmt.Errorf("failed to parse entrance message date time: %s", err)
 	}
 	ObserveLatency("queueing", QueueingLatency, ts)
-	defer ObserveLatency("processing", ProcessingLatency, ts)
+	defer ObserveLatency("processing", ProcessingLatency, startProcessingTs)
 
 	log.Debugf("(worker %d) processing entrance: %v", w.Id, entrance)
 	ctx := context.Background()
@@ -281,6 +282,7 @@ func (w *Worker) ProcessEntrance(m amqp091.Delivery) error {
 }
 
 func (w *Worker) ProcessExit(m amqp091.Delivery) error {
+	startProcessingTs := time.Now()
 	exit := shared.Exit{}
 	if err := json.Unmarshal(m.Body, &exit); err != nil {
 		return err
@@ -291,7 +293,7 @@ func (w *Worker) ProcessExit(m amqp091.Delivery) error {
 		return fmt.Errorf("failed to parse exit message date time: %s", err)
 	}
 	ObserveLatency("queueing", QueueingLatency, ts)
-	defer ObserveLatency("processing", ProcessingLatency, ts)
+	defer ObserveLatency("processing", ProcessingLatency, startProcessingTs)
 
 	log.Debugf("(worker %d) processing exit: %v", w.Id, exit)
 	ctx := context.Background()
