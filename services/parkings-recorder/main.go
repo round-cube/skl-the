@@ -181,9 +181,9 @@ func formatTime(t time.Time) string {
 	return t.Format(time.RFC3339)
 }
 
-func ObserveLatency(metric prometheus.Observer, start time.Time) {
+func ObserveLatency(entity string, metric prometheus.Observer, start time.Time) {
 	metric.Observe(time.Since(start).Seconds())
-	log.Debugf("latency: %v", time.Since(start))
+	log.Debugf("%s latency: %v", entity, time.Since(start))
 }
 
 func SendParkingToStorage(p *Parking, url, token string) error {
@@ -202,7 +202,7 @@ func SendParkingToStorage(p *Parking, url, token string) error {
 
 	client := &http.Client{}
 	start := time.Now()
-	defer ObserveLatency(StorageLatency, start)
+	defer ObserveLatency("storing", StorageLatency, start)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -226,8 +226,8 @@ func (w *Worker) ProcessEntrance(m amqp091.Delivery) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse entrance message date time: %s", err)
 	}
-	QueueingLatency.Observe(time.Since(ts).Seconds())
-	defer ObserveLatency(ProcessingLatency, ts)
+	ObserveLatency("queueing", QueueingLatency, ts)
+	defer ObserveLatency("processing", ProcessingLatency, ts)
 
 	log.Debugf("(worker %d) processing entrance: %v", w.Id, entrance)
 	ctx := context.Background()
@@ -290,8 +290,8 @@ func (w *Worker) ProcessExit(m amqp091.Delivery) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse exit message date time: %s", err)
 	}
-	QueueingLatency.Observe(time.Since(ts).Seconds())
-	defer ObserveLatency(ProcessingLatency, ts)
+	ObserveLatency("queueing", QueueingLatency, ts)
+	defer ObserveLatency("processing", ProcessingLatency, ts)
 
 	log.Debugf("(worker %d) processing exit: %v", w.Id, exit)
 	ctx := context.Background()
@@ -382,7 +382,7 @@ func main() {
 
 	locker := redislock.New(rds)
 	lockOpts := &redislock.Options{
-		RetryStrategy: redislock.LimitRetry(redislock.LinearBackoff(100*time.Millisecond), 3),
+		RetryStrategy: redislock.LimitRetry(redislock.LinearBackoff(1000*time.Millisecond), 3),
 	}
 
 	entr, err := shared.NewRMQueue(settings.rmqURL, settings.entrancesQueueName)
