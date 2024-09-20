@@ -372,7 +372,7 @@ func startPrometheus(promPort int, promPath string) {
 	http.Handle(promPath, promhttp.Handler())
 	err := http.ListenAndServe(fmt.Sprintf(":%d", promPort), nil)
 	shared.PanicOnError(err, "failed to start prometheus server")
-	fmt.Printf("prometheus metrics available at http://localhost:%d%s\n", promPort, promPath)
+	log.Infof("prometheus metrics available at http://localhost:%d%s\n", promPort, promPath)
 }
 
 func main() {
