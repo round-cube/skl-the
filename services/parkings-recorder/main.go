@@ -368,13 +368,18 @@ func (w *Worker) ProcessExits(msgs <-chan amqp091.Delivery) {
 	}
 }
 
+func startPrometheus(promPort int, promPath string) {
+	http.Handle(promPath, promhttp.Handler())
+	err := http.ListenAndServe(fmt.Sprintf(":%d", promPort), nil)
+	shared.PanicOnError(err, "failed to start prometheus server")
+}
+
 func main() {
 	shared.InitLog()
 	settings, err := newSettings()
 	shared.PanicOnError(err, "failed to read settings")
 
-	http.Handle(settings.promPath, promhttp.Handler())
-	go http.ListenAndServe(fmt.Sprintf(":%d", settings.promPort), nil)
+	go startPrometheus(settings.promPort, settings.promPath)
 	fmt.Printf("prometheus metrics available at http://localhost:%d%s\n", settings.promPort, settings.promPath)
 
 	opt, err := redis.ParseURL(settings.redisURL)
